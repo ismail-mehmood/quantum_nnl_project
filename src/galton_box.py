@@ -49,11 +49,53 @@ def galton_one_layer(shots=1000, mode="full"):
 
 # Two layer box, (3 pegs, 4 bins)
 
-def galton_two_layer(shots=1000):
-    qc = QuantumCircuit(2, 2)
-    qc.h(0)
-    qc.h(1)
-    qc.measure([0, 1], [0, 1]) # measure both qubits for right turn count
+def galton_two_layer(shots=1000, mode="full"):
+
+    if mode == "full":
+        qc = QuantumCircuit(6, 3)  # 6 qubits, 3 classical bits
+
+        # Qubit roles because apparently six numbers is too many for my brain:
+        # q0 - control qubit
+        # q1 - leftmost output peg
+        # q2 - intermediate peg
+        # q3 - input qubit (ball starts here)
+        # q4 - right intermediate peg
+        # q5 - rightmost output peg
+
+        # Step 1: Initialize input ball in q3 (|000100⟩)
+        qc.x(3)  # q3 = 1
+
+        # First peg
+        qc.h(0)                   # Superpose control qubit
+        qc.cswap(0, 2, 3)         # Conditional swap: input to left
+        qc.cx(3, 0)               # Update control if ball moved
+        qc.cswap(0, 3, 4)         # Conditional swap: input to right
+
+        # Reset control and prepare for second layer
+        qc.reset(0)
+        qc.h(0)
+
+        # Second layer — peg 1 (left path)
+        qc.cswap(0, 1, 2)         # Conditional swap: ball left
+        qc.cx(2, 0)               # Update control
+
+        # Second layer — peg 2 (right path)
+        qc.cswap(0, 2, 3)         # Conditional swap: center to right
+        qc.cx(3, 0)               # Update control
+        qc.cswap(0, 3, 4)         # Continue to far-right
+        qc.cx(4, 0)               # Update control
+        qc.cswap(0, 4, 5)         # Final rightmost fall
+
+        # Measure pegs: left = q1, middle = q3, right = q5
+        qc.measure(1, 0)
+        qc.measure(3, 1)
+        qc.measure(5, 2)
+
+    else:
+        qc = QuantumCircuit(2, 2)
+        qc.h(0)
+        qc.h(1)
+        qc.measure([0, 1], [0, 1]) # measure both qubits for right turn count
 
     # Simulate
     sim = AerSimulator()
@@ -61,13 +103,28 @@ def galton_two_layer(shots=1000):
     result = sim.run(tqc, shots=shots).result()
     counts = result.get_counts()
 
-    # Get bin index, by number of right turns (1)
-    bin_counts = {}
-    for bitstring, count in counts.items():
-        num_ones = bitstring.count('1')
-        bin_counts[num_ones] = bin_counts.get(num_ones, 0) + count
+    # Post-process: bin based on measurement result
+    bin_counts = {0: 0, 1: 0, 2: 0}
+    if mode == "full":
+        for bitstring, count in counts.items():
+            # bitstring order: c2 c1 c0 → [right, middle, left]
+            left = bitstring[0]
+            middle = bitstring[1]
+            right = bitstring[2]
+
+            if right == '1':
+                bin_counts[2] += count
+            elif middle == '1':
+                bin_counts[1] += count
+            elif left == '1':
+                bin_counts[0] += count
+    else:
+        for bitstring, count in counts.items():
+            num_ones = bitstring.count('1')
+            bin_counts[num_ones] = bin_counts.get(num_ones, 0) + count
 
     return bin_counts
+
 
 # N-Layer Galton Board based on above format
 

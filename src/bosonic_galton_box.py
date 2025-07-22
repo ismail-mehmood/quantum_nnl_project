@@ -10,7 +10,7 @@ def _get_unitary_single(R):
 def unitary(R, depth):
     
     # 1BS => 2 modes
-    # 2 BS => 4 modes
+    # 2BS => 4 modes
     
     n_modes = 2 * depth 
     
@@ -27,9 +27,7 @@ def unitary(R, depth):
     return unitary
     
 
-def sample_basic_board(depth=1, n_photons=1):
-
-    R = 0.5
+def sample_bosonic_board(depth=1, n_photons=1, R=0.5):
     
     u = unitary(R, depth)
     input_modes = [0]*2*depth
@@ -49,8 +47,14 @@ def sample_basic_board(depth=1, n_photons=1):
     
     labels, counts = np.unique(samples, return_counts=True)
 
+    # Pretty plot
     plt.bar(labels, counts, align='center')
     plt.gca().set_xticks(labels)
     plt.xlabel('Output bins')
     plt.ylabel('Counts')
+    plt.title("Boson sampler Galton Board")
+    plt.grid(True, linestyle="--", alpha=0.3)
+    plt.tight_layout()
     plt.show()
+
+

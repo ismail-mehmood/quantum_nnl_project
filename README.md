@@ -12,7 +12,7 @@ The simulator demonstrates how quantum circuits can model classical stochastic s
 ```
 quantum_nnl_project/
 |
-├── src/                       # Core source code (reusable functions & modules)
+├── src/                       # Core source code
 │   ├── basic_galton_box.py    # Trial unitary 2D Galton circuit
 │   ├── galton_box.py          # Build Galton circuits, simulation utilities
 │   ├── exponential_box.py     # Build Galton circuits, simulation utilities for larger model?
@@ -20,27 +20,27 @@ quantum_nnl_project/
 │   ├── analysis.py            # Tools for postprocessing and custom distribution shaping
 │   └── noise_optimisation.py  # Apply and simulate noise
 │
-├── notebooks/                           # Interactive Jupyter notebooks
-│   ├── basic_galton_box.ipynb           # Initial Gaussian simulation
-│   ├── galton_box_demo.ipynb            # Parametric version & visualizations
-│   ├── exponential_box_demo.ipynb       # Exponential version & visualizations
-│   ├── noise_modelling_demo.ipynb       # Noisy demo
-│   └── quantum_walk_demo.ipynb          # Walk demo
+├── notebooks/                             # Interactive Jupyter notebooks
+│   ├── bosonic_galton_box_demo.ipynb      # Boson sampler based demo of a photonic Galton box
+│   ├── galton_box_demo.ipynb              # Quantum Galton box examples
+│   ├── modified_distribution_boxes.ipynb  # Exponential and geometric versions
+│   ├── quantum_walk_demo.ipynb            # Walk demo
+│   └── noise_modelling_demo.ipynb         # Hardware noise and mitigations
 │
 ├── results/                   # Output plots and saved data
-│   ├── gaussian_histograms/ # TBC
-│   ├── exponential_outputs/ # TBC
-│   └── hadamard_walks/      # TBC
+│   ├── gaussian_histograms/   # TBC, potentially error bars and distribution approximation metrics
+│   ├── exponential_outputs/   # TBC, potentially error bars and distribution approximation metrics
+│   └── hadamard_walks/        # TBC, potentially error bars and distribution approximation metrics
 │
-├── docs/                      # LaTeX documentation and submission deliverables
-│   ├── notes/
-│   │   └── formulae.tex          # Technical/design notes
-│   ├── summary/
-│   │   └── main.tex           # 2-page challenge summary 
-│   └── figures/
+├── docs/                      # Typst documentation and submission deliverables
+│   ├── extension/
+│   │   └── extension.typ      # Report on additional material, tbc
+│   └── summary/
+│       ├──  main.typ          # 2-page challenge summary 
+│       └──  figures           # Images, bibliography etc
 │
 ├── tests/                     # Unit tests for source modules
-│   └── test_galton_box.py     # Some kind of Galton box test
+│   └── test_galton_box.py     # Some kind of Galton box test, TBC
 │
 ├── .gitignore
 ├── README.md
@@ -60,11 +60,13 @@ quantum_nnl_project/
 
 ## Notebooks Overview
 
-| Notebook                         | Description                                         |
-| -------------------------------- | --------------------------------------------------- |
-| `galton_box_basic.ipynb`         | First prototype: Gaussian from quantum randomness   |
-| `galton_box_demo.ipynb`          | Generalized circuit with any number of layers       |
-| `distribution_experiments.ipynb` | Tweaked circuits for exponential and Hadamard walks |
+| Notebook                              | Description                                                         |
+| ------------------------------------- | ------------------------------------------------------------------- |
+| `bosonic_galton_box_demo.ipynb`       | Initial experiment with boson sampling based board.                 |
+| `galton_box_demo.ipynb`               | 1-, 2- and N-Layer quantum Galton Board examples.                   |
+| `modified_distribution_boxes.ipynb`   | Tweaked circuits for exponential, geometric distribution.           |
+| `quantum_walk_demo.ipynb`             | Hadamard and <some other> quantum walk examples.                    |
+| `noise_modelling_demo.ipynb`          | Examples with hardware noise, with gate optimisation, ZNE and QEC.  | |
 
 ---
 
@@ -90,8 +92,8 @@ quantum_nnl_project/
    ```bash
    jupyter notebook
    ```
-
-Note that the notebooks must be run from the ROOT directory of the project, if using the integrated notebook editor in VSCode, please adjust the .vscode config accordingly.
+f
+Note that the notebooks must be run from the ROOT directory of the project, use the os cell at the top of each notebook if you've haven't set this already. 
 
 ---
 
@@ -107,13 +109,13 @@ pytest tests/
 
 ## Documentation
 
-All written deliverables (summary, design notes) are in `docs/`. LaTeX sources are included, and figures are saved in `docs/figures/`.
+All written deliverables (summary, design notes) are in `docs/`. Typst sources are included, and figures are saved in `docs/summary/`.
 
-To compile the PDF:
+To compile the PDF (once you have downloaded the Typst compiler):
 
 ```bash
 cd docs/
-pdflatex report.tex
+typst compile summary/main.typ
 ```
 
 ---

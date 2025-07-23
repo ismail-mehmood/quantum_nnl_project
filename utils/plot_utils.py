@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats import binom, norm
+from scipy.stats import binom, norm, expon
 
 def plot_bins(bin_counts, n, shots=None, overlay=None, title="Galton Box"):
 
@@ -25,6 +25,17 @@ def plot_bins(bin_counts, n, shots=None, overlay=None, title="Galton Box"):
             # Probability density function
             expected = shots * norm.pdf(bins, mu, sigma)
             plt.plot(bins, expected, "go--", label="Gaussian Approx.")
+
+        elif overlay.lower() == "exponential":
+
+            # Set parameters for the exponential distribution
+            scale = 1.5  # adjust this to control the steepness
+
+            # Exponential Probability Density Function
+            expected = shots * expon.pdf(bins, scale=scale)
+
+            # Plot
+            plt.plot(bins, expected, "ro--", label="Exponential Approx.")
 
         else:
             raise ValueError("Unsupported overlay option: choose 'binomial' or 'gaussian'")

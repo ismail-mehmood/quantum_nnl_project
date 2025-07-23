@@ -11,7 +11,7 @@ def biased_galton_n_layer(n, shots=1000, mode="full", initial_theta=np.pi/2, dec
 
     layer_index = 1
 
-    theta = initial_theta * np.exp(-layer_index / decay_factor)
+    theta = initial_theta / (1 + layer_index / decay_factor)
 
     if mode == "full":
         total_qubits = 2 * n + 2  # control + 2n + 1 pegs

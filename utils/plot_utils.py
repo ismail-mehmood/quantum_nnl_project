@@ -29,7 +29,7 @@ def plot_bins(bin_counts, n, shots=None, overlay=None, title="Galton Box"):
         elif overlay.lower() == "exponential":
 
             # Set parameters for the exponential distribution
-            scale = 1.5  # adjust this to control the steepness
+            scale = 1.75  # adjust this to control the steepness
 
             # Exponential Probability Density Function
             expected = shots * expon.pdf(bins, scale=scale)

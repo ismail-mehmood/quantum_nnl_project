@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats import binom, norm, expon
+from scipy.stats import binom, norm, expon, laplace
 
-def plot_bins(bin_counts, n, shots=None, overlay=None, title="Galton Box"):
+def plot_bins(bin_counts, n, shots=None, overlay=None, title="Galton Box", scale=0):
 
     bins = np.arange(n + 1) # get bin count
     counts = [bin_counts.get(b, 0) for b in bins] # retrieve results
@@ -27,15 +27,20 @@ def plot_bins(bin_counts, n, shots=None, overlay=None, title="Galton Box"):
             plt.plot(bins, expected, "go--", label="Gaussian Approx.")
 
         elif overlay.lower() == "exponential":
-
-            # Set parameters for the exponential distribution
-            scale = 1.75  # adjust this to control the steepness
-
+            
             # Exponential Probability Density Function
             expected = shots * expon.pdf(bins, scale=scale)
 
             # Plot
             plt.plot(bins, expected, "ro--", label="Exponential Approx.")
+
+        elif overlay.lower() == "laplace":
+
+            # Double sided Exponential Probability Density Function
+            expected = shots * laplace.pdf(bins, scale=scale, loc=n/2)
+
+            # Plot
+            plt.plot(bins, expected, "ro--", label="Laplacian Approx.")
 
         else:
             raise ValueError("Unsupported overlay option: choose 'binomial' or 'gaussian'")

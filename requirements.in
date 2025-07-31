@@ -3,3 +3,4 @@ qiskit
 matplotlib
 scipy
 numpy
+pylatexenc

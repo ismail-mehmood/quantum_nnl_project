@@ -1,6 +1,7 @@
 from qiskit import QuantumCircuit, transpile
 from qiskit_aer import AerSimulator
 from enum import Enum
+from IPython.display import display
 
 class CircuitType(Enum):
     FULL = "full"
@@ -128,7 +129,7 @@ def galton_two_layer(shots=1000, mode="full"):
 
 # N-Layer Galton Board based on above format
 
-def galton_n_layer(n, shots=1000, mode="full"):
+def galton_n_layer(n, shots=1000, mode="full", draw=False):
 
     if mode == "full":
         total_qubits = 2 * n + 2  # control + 2n + 1 pegs
@@ -197,5 +198,8 @@ def galton_n_layer(n, shots=1000, mode="full"):
         for bitstring, count in counts.items():
             num_ones = bitstring.count('1')
             bin_counts[num_ones] += count
+
+    if draw:  # Draw the circuit if requested
+        display(qc.draw(output='mpl'))
 
     return bin_counts

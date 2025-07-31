@@ -6,8 +6,10 @@
   abstract: [
     Interferometers are devices which use light, or more generally superimposing waves, 
     using interference to extract information. We propose a method by which quantum 
-    information, as well as non-linear interferometers can be modelled and simulated 
-    with quantum circuits.
+    information can be obtained and used as a benchmark for quantum circuits,
+    as well as modelling non-linear interferometers. We simulate these with traditional
+    classical methods, then show quantum circuit variants, finally showing how these
+    circuits can be used as benchmarks for qubit coherence. 
   ],
   authors: (
     (

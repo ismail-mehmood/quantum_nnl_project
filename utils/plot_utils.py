@@ -55,3 +55,42 @@ def plot_bins(bin_counts, n, shots=None, overlay=None, title="Galton Box", scale
         plt.legend()
     plt.tight_layout()
     plt.show()
+
+def plot_mzi_fringe(phases, results, labels=None, title="Mach–Zehnder Interference"):
+    """
+    Plot Mach–Zehnder interferometer output probabilities vs phase.
+
+    Parameters:
+    -----------
+    phases : array-like
+        List/array of phase angles (radians), e.g. np.linspace(0, 2*np.pi, 50)
+    results : list of array-like
+        Each element is a 2-element array/list [P0, P1] for output mode probabilities.
+        E.g. results[i] = [prob_mode0, prob_mode1] for phase[i].
+    labels : list of str, optional
+        Labels for output modes (default: ["Mode 0", "Mode 1"]).
+    title : str, optional
+        Plot title.
+    """
+    results = np.array(results)
+    probs_mode0 = results[:, 0]
+    probs_mode1 = results[:, 1]
+
+    if labels is None:
+        labels = ["Output Mode 0", "Output Mode 1"]
+
+    # Plot
+    plt.figure(figsize=(7, 4))
+    plt.plot(phases, probs_mode0, "o-", label=labels[0])
+    plt.plot(phases, probs_mode1, "s-", label=labels[1])
+
+    # Styling
+    plt.xticks([0, np.pi/2, np.pi, 3*np.pi/2, 2*np.pi], ["0", "π/2", "π", "3π/2", "2π"])
+    plt.xlabel("Phase Shift (φ)")
+    plt.ylabel("Probability")
+    plt.title(title)
+    plt.ylim(0, 1)
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()

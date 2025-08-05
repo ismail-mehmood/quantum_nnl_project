@@ -1,5 +1,6 @@
 from qiskit import QuantumCircuit, transpile
 from qiskit_aer import AerSimulator
+from qiskit.providers.fake_provider import GenericBackendV2
 from enum import Enum
 from IPython.display import display
 
@@ -9,7 +10,7 @@ class CircuitType(Enum):
 
 # One layer box, (1 peg, 2 bins)
 
-def galton_one_layer(shots=1000, mode="full"):
+def galton_one_layer(shots=1000, mode="full", noise=False):
 
     if mode == "full":
         qc = QuantumCircuit(4, 2)  # 4 qubits, but only 2 classical bits needed
@@ -26,9 +27,16 @@ def galton_one_layer(shots=1000, mode="full"):
         qc.measure(0, 0)           # Measure outcome
 
     # Simulate
-    sim = AerSimulator()
-    tqc = transpile(qc, sim)
-    result = sim.run(tqc, shots=shots).result()
+    if noise:
+        backend = GenericBackendV2(num_qubits=4)
+        tqc = transpile(qc, backend)
+        job = backend.run(tqc)
+        result = job.result()
+    else:
+        sim = AerSimulator()
+        tqc = transpile(qc, sim)
+        result = sim.run(tqc, shots=shots).result()
+
     counts = result.get_counts()
 
     # Get bin index, by number of right turns (1)
@@ -50,7 +58,7 @@ def galton_one_layer(shots=1000, mode="full"):
 
 # Two layer box, (3 pegs, 4 bins)
 
-def galton_two_layer(shots=1000, mode="full"):
+def galton_two_layer(shots=1000, mode="full", noise=False):
 
     if mode == "full":
         qc = QuantumCircuit(6, 3)  # 6 qubits, 3 classical bits
@@ -99,9 +107,16 @@ def galton_two_layer(shots=1000, mode="full"):
         qc.measure([0, 1], [0, 1]) # measure both qubits for right turn count
 
     # Simulate
-    sim = AerSimulator()
-    tqc = transpile(qc, sim)
-    result = sim.run(tqc, shots=shots).result()
+    if noise:
+        backend = GenericBackendV2(num_qubits=6)
+        tqc = transpile(qc, backend)
+        job = backend.run(tqc)
+        result = job.result()
+    else:
+        sim = AerSimulator()
+        tqc = transpile(qc, sim)
+        result = sim.run(tqc, shots=shots).result()
+
     counts = result.get_counts()
 
     # Post-process: bin based on measurement result
@@ -129,7 +144,7 @@ def galton_two_layer(shots=1000, mode="full"):
 
 # N-Layer Galton Board based on above format
 
-def galton_n_layer(n, shots=1000, mode="full", draw=False):
+def galton_n_layer(n, shots=1000, mode="full", noise=False, draw=False):
 
     if mode == "full":
         total_qubits = 2 * n + 2  # control + 2n + 1 pegs
@@ -181,9 +196,16 @@ def galton_n_layer(n, shots=1000, mode="full", draw=False):
         qc.measure(range(n), range(n))
 
     # Simulate
-    sim = AerSimulator()
-    tqc = transpile(qc, sim)
-    result = sim.run(tqc, shots=shots).result()
+    if noise:
+        backend = GenericBackendV2(num_qubits=2*n+2)
+        tqc = transpile(qc, backend)
+        job = backend.run(tqc)
+        result = job.result()
+    else:
+        sim = AerSimulator()
+        tqc = transpile(qc, sim)
+        result = sim.run(tqc, shots=shots).result()
+        
     counts = result.get_counts()
 
     # Bin counts

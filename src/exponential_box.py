@@ -2,6 +2,7 @@ import time
 import numpy as np
 from qiskit import QuantumCircuit, transpile
 from qiskit_aer import AerSimulator
+from qiskit.providers.fake_provider import GenericBackendV2
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 from enum import Enum
@@ -95,7 +96,7 @@ def optimise_layerwise(n=5, shots=2000, target="laplace", scale=1.5, decay=1.0, 
     return final_params, final_loss
 
 
-def biased_galton_n_layer(n, shots=1000, mode="full", thetas=None):
+def biased_galton_n_layer(n, shots=1000, mode="full", thetas=None, noise=False):
 
     if thetas is None:
         thetas = [np.pi/4] * n
@@ -150,9 +151,16 @@ def biased_galton_n_layer(n, shots=1000, mode="full", thetas=None):
         qc.measure(range(n), range(n))
 
     # Simulate
-    sim = AerSimulator()
-    tqc = transpile(qc, sim)
-    result = sim.run(tqc, shots=shots).result()
+    if noise:
+        backend = GenericBackendV2(num_qubits=2*n+2)
+        tqc = transpile(qc, backend)
+        job = backend.run(tqc)
+        result = job.result()
+    else:
+        sim = AerSimulator()
+        tqc = transpile(qc, sim)
+        result = sim.run(tqc, shots=shots).result()
+
     counts = result.get_counts()
 
     # Bin counts

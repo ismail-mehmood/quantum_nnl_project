@@ -25,17 +25,25 @@ def target_laplace_distribution(n_bins, decay_factor=1.0):
     probs /= np.sum(probs)  # Normalise
     return probs
 
-# Least aquares regression with interrupts for my sanity
-def loss_function_layerwise(params, n, shots, target_probs, plot=False, start_time=None, max_time=None, best_tracker=None):
+# Least squares regression with interrupts for my sanity
+def loss_function_layerwise(params, n, shots, target_probs, target, plot=False, start_time=None, max_time=None, best_tracker=None):
     # Time check for forced termination, minimize runs its own internal iterations
     if start_time is not None and max_time is not None:
         if time.time() - start_time > max_time:
             print("\nTime limit reached. Forcing optimization to stop.")
             raise TimeoutError  # Interrupt minimize()
 
-    counts = biased_galton_n_layer(n, shots=shots, thetas=params)
+    counts = biased_galton_n_layer(n, shots=shots, thetas=params, mode="fast")
+
     sim_probs = np.array([counts[i] for i in range(n + 1)]) / shots
-    loss = np.sum((sim_probs - target_probs) ** 2)
+
+    # We use KL divergence instead of squared error for exponential because of the
+    # tail shape of the exponential distribution
+
+    if target == "exponential":
+        loss = np.sum(target_probs * np.log((target_probs + 1e-8) / (sim_probs + 1e-8)))
+    else:
+        loss = np.sum((sim_probs - target_probs) ** 2)
 
     # Update result tracker
     if best_tracker is not None:
@@ -44,7 +52,7 @@ def loss_function_layerwise(params, n, shots, target_probs, plot=False, start_ti
             best_tracker["params"] = params.copy()
 
     # Live plotting during optimization
-    if plot:
+    if plot and (best_tracker is None or loss < best_tracker["loss"] * 1.02):
         plt.clf()
         bins = np.arange(n + 1)
         plt.bar(bins, sim_probs, alpha=0.6, label="Simulated")
@@ -67,33 +75,79 @@ def optimise_layerwise(n=5, shots=2000, target="laplace", scale=1.5, decay=1.0, 
     else:
         raise ValueError("Target must be 'exponential' or 'laplace'")
 
-    # Initial guess
-    x0 = np.linspace(np.pi/1.5, np.pi/6, n)
-    bounds = [(0.01, np.pi)] * n
-
     plt.ion()
     start_time = time.time()
-    best_tracker = {"loss": np.inf, "params": x0.copy()}
 
-    try:
-        res = minimize(loss_function_layerwise, x0,
-                       args=(n, shots, target_probs, True, start_time, max_time, best_tracker),
-                       method='L-BFGS-B', bounds=bounds,
-                       options={'maxiter': 500})
-    except TimeoutError:
-        print("\nOptimisation stopped due to time limit.")
-        res = None
+    if target == "exponential":
+        # -------- EXPONENTIAL OPTIMIZATION --------
+        best_tracker = {
+            "loss": np.inf,
+            "params": None,      # best thetas
+            "raw_params": None   # best [initial_theta, decay]
+        }
 
-    plt.ioff()
-    plt.show()
+        def exp_loss(params):
+            initial_theta, decay_factor = params
+            thetas = [initial_theta * np.exp(-i / decay_factor) for i in range(n)]
+            loss = loss_function_layerwise(
+                thetas, n, shots, target_probs, target,
+                plot=True, start_time=start_time, max_time=max_time, best_tracker=None
+            )
+            # Track best result
+            if loss < best_tracker["loss"]:
+                best_tracker["loss"] = loss
+                best_tracker["params"] = thetas
+                best_tracker["raw_params"] = params.copy()
+            return loss
 
-    # Use best result (whether timeout occurred or not)
-    final_params = best_tracker["params"]
-    final_loss = best_tracker["loss"]
+        # Initial guess and bounds
+        x0 = [np.pi/5, decay]  # e.g., ~36° starting angle, user decay guess
+        bounds = [(np.pi/8, np.pi/3), (2.0, 6.0)]  # safe ranges
 
-    print("\nBest Optimised thetas:", final_params)
-    print("Best Loss:", final_loss)
-    return final_params, final_loss
+        try:
+            res = minimize(exp_loss, x0, method="L-BFGS-B", bounds=bounds, options={"maxiter": 500})
+        except TimeoutError:
+            print("\nOptimization stopped due to time limit.")
+            res = None
+
+        plt.ioff()
+        plt.show()
+
+        # Extract best tracked result
+        final_thetas = best_tracker["params"]
+        final_loss = best_tracker["loss"]
+        best_raw = best_tracker["raw_params"]
+
+        print("\nOptimizer exit (last step):", res.x if res else "N/A")
+        print("Best tracked [initial, decay]:", best_raw)
+        print("Best Optimized thetas:", final_thetas)
+        print("Best Loss:", final_loss)
+        return final_thetas, final_loss, best_raw
+
+    else:
+        # -------- LAPLACE OPTIMIZATION (unchanged) --------
+        x0 = np.linspace(np.pi/1.5, np.pi/6, n)
+        bounds = [(0.01, np.pi)] * n
+        best_tracker = {"loss": np.inf, "params": x0.copy()}
+
+        try:
+            res = minimize(loss_function_layerwise, x0,
+                           args=(n, shots, target_probs, target, True, start_time, max_time, best_tracker),
+                           method='L-BFGS-B', bounds=bounds,
+                           options={'maxiter': 500})
+        except TimeoutError:
+            print("\nOptimization stopped due to time limit.")
+            res = None
+
+        plt.ioff()
+        plt.show()
+
+        final_thetas = best_tracker["params"]
+        final_loss = best_tracker["loss"]
+
+        print("\nBest Optimized thetas:", final_thetas)
+        print("Best Loss:", final_loss)
+        return final_thetas, final_loss
 
 
 def biased_galton_n_layer(n, shots=1000, mode="full", thetas=None, noise=False):
@@ -167,7 +221,7 @@ def biased_galton_n_layer(n, shots=1000, mode="full", thetas=None, noise=False):
     bin_counts = {i: 0 for i in range(n + 1)}
     if mode == "full":
         for bitstring, count in counts.items():
-            for i, bit in enumerate(reversed(bitstring)):
+            for i, bit in enumerate(bitstring):
                 if bit == '1':
                     bin_counts[i] += count
                     break

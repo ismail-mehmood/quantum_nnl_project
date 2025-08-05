@@ -28,8 +28,10 @@ def plot_bins(bin_counts, n, shots=None, overlay=None, title="Galton Box", scale
 
         elif overlay.lower() == "exponential":
             
-            # Exponential Probability Density Function
-            expected = shots * expon.pdf(bins, scale=scale)
+            # ***Discrete*** exponential (same logic as target_exponential)
+            probs = np.exp(-bins / scale)
+            probs /= np.sum(probs)  # normalize to sum to 1 over discrete bins
+            expected = probs * shots
 
             # Plot
             plt.plot(bins, expected, "ro--", label="Exponential Approx.")
@@ -37,7 +39,10 @@ def plot_bins(bin_counts, n, shots=None, overlay=None, title="Galton Box", scale
         elif overlay.lower() == "laplace":
 
             # Double sided Exponential Probability Density Function
-            expected = shots * laplace.pdf(bins, scale=scale, loc=n/2)
+            # Discrete Laplace (two-sided exponential centered at n/2)
+            probs = np.exp(-np.abs(bins - n/2) / scale)
+            probs /= np.sum(probs)  # normalize
+            expected = probs * shots
 
             # Plot
             plt.plot(bins, expected, "ro--", label="Laplacian Approx.")

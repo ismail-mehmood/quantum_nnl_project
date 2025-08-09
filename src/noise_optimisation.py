@@ -1,0 +1,365 @@
+from qiskit import QuantumCircuit, transpile
+from qiskit_aer import AerSimulator
+from qiskit.providers.fake_provider import GenericBackendV2
+from enum import Enum
+from IPython.display import display
+
+from mitiq.zne import execute_with_zne
+from mitiq.zne.scaling import fold_gates_at_random
+from mitiq.zne.inference import RichardsonFactory
+
+class CircuitType(Enum):
+    FULL = "full"
+    FAST = "fast"
+
+def noisy_bin_executor(bin_index, backend, shots):
+    def _executor(circuit):
+        tqc = transpile(circuit, backend)
+        result = backend.run(tqc, shots=shots).result()
+        counts = result.get_counts()
+        total = sum(counts.values())
+        
+        prob = 0
+        for bitstring, count in counts.items():
+            num_ones = bitstring.count('1')
+            if num_ones == bin_index:
+                prob += count
+        return prob / total
+    return _executor
+
+def zne_galton_counts(qc, n_bins, backend, shots=1000):
+    mitigated_counts = {i: 0 for i in range(n_bins)}
+    for bin_index in range(n_bins):
+        executor_fn = noisy_bin_executor(bin_index, backend, shots)
+        
+        mitigated_prob = execute_with_zne(
+            qc,
+            executor=executor_fn,
+            factory=RichardsonFactory(scale_factors=[1.0, 2.0, 3.0]),
+            scale_noise=fold_gates_at_random
+        )
+        
+        mitigated_counts[bin_index] = mitigated_prob * shots
+    return mitigated_counts
+
+# One layer box, (1 peg, 2 bins)
+
+def galton_one_layer(shots=1000, mode="full", noise=False, op_level=0, zne=False):
+
+    if mode == "full":
+        qc = QuantumCircuit(4, 2)  # 4 qubits, but only 2 classical bits needed
+        qc.x(2)                    # Input qubit |0100⟩
+        qc.h(0)                    # Control qubit (superposition)
+        qc.cswap(0, 1, 2)          # Swap left (1) with input (2)
+        qc.cx(2, 0)                # Enforce control = 1 if input fell
+        qc.cswap(0, 2, 3)          # Swap right (3) with input (2)
+        qc.measure(1, 0)           # Measure left outcome
+        qc.measure(3, 1)           # Measure right outcome
+    else: 
+        qc = QuantumCircuit(1, 1)  # 1 qubit, initialised to |0⟩
+        qc.h(0)                    # Hadamard gate
+        qc.measure(0, 0)           # Measure outcome
+
+    # Simulate
+    if noise:
+        backend = GenericBackendV2(num_qubits=4)
+        if zne:
+            # Apply ZNE
+            counts = zne_galton_counts(qc, n_bins=2, backend=backend, shots=shots)
+        else:
+            tqc = transpile(qc, backend, optimization_level=op_level)
+            job = backend.run(tqc)
+            result = job.result()
+            counts = result.get_counts()
+
+    else:
+        sim = AerSimulator()
+        tqc = transpile(qc, sim)
+        result = sim.run(tqc, shots=shots).result()
+        counts = result.get_counts()
+
+
+    # Get bin index, by number of right turns (1)
+from qiskit import QuantumCircuit, transpile
+from qiskit_aer import AerSimulator
+from qiskit.providers.fake_provider import GenericBackendV2
+from enum import Enum
+from IPython.display import display
+
+from mitiq.zne import execute_with_zne
+from mitiq.zne.scaling import fold_gates_at_random
+from mitiq.zne.inference import RichardsonFactory
+
+class CircuitType(Enum):
+    FULL = "full"
+    FAST = "fast"
+
+def noisy_bin_executor(bin_index, backend, shots):
+    def _executor(circuit):
+        tqc = transpile(circuit, backend)
+        result = backend.run(tqc, shots=shots).result()
+        counts = result.get_counts()
+        total = sum(counts.values())
+        
+        prob = 0
+        for bitstring, count in counts.items():
+            # bitstring example: '01' or '10'
+            # For 'full' mode, bin 0 corresponds to left=1 (classical bit 0 == '1')
+            # bin 1 corresponds to right=1 (classical bit 1 == '1')
+            if bin_index == 0 and bitstring[-1] == '1':  # classical bit 0 is last char
+                prob += count
+            elif bin_index == 1 and bitstring[-2] == '1':  # classical bit 1 is second last char
+                prob += count
+        
+        return prob / total
+    return _executor
+
+
+def zne_galton_counts(qc, n_bins, backend, shots=1000):
+    mitigated_counts = {i: 0 for i in range(n_bins)}
+    for bin_index in range(n_bins):
+        executor_fn = noisy_bin_executor(bin_index, backend, shots)
+        
+        mitigated_prob = execute_with_zne(
+            qc,
+            executor=executor_fn,
+            factory=RichardsonFactory(scale_factors=[1.0, 2.0, 3.0]),
+            scale_noise=fold_gates_at_random
+        )
+        
+        mitigated_counts[bin_index] = mitigated_prob * shots
+    return mitigated_counts
+
+# One layer box, (1 peg, 2 bins)
+
+def galton_one_layer(shots=1000, mode="full", noise=False, op_level=0, zne=False):
+
+    if mode == "full":
+        qc = QuantumCircuit(4, 2)  # 4 qubits, but only 2 classical bits needed
+        qc.x(2)                    # Input qubit |0100⟩
+        qc.h(0)                    # Control qubit (superposition)
+        qc.cswap(0, 1, 2)          # Swap left (1) with input (2)
+        qc.cx(2, 0)                # Enforce control = 1 if input fell
+        qc.cswap(0, 2, 3)          # Swap right (3) with input (2)
+        qc.measure(1, 0)           # Measure left outcome
+        qc.measure(3, 1)           # Measure right outcome
+    else: 
+        qc = QuantumCircuit(1, 1)  # 1 qubit, initialised to |0⟩
+        qc.h(0)                    # Hadamard gate
+        qc.measure(0, 0)           # Measure outcome
+
+    # Simulate
+    if noise:
+        backend = GenericBackendV2(num_qubits=4)
+        if zne:
+            # Apply ZNE
+            counts = zne_galton_counts(qc, n_bins=2, backend=backend, shots=shots)
+            return counts
+        else:
+            tqc = transpile(qc, backend, optimization_level=op_level)
+            job = backend.run(tqc)
+            result = job.result()
+            counts = result.get_counts()
+
+    else:
+        sim = AerSimulator()
+        tqc = transpile(qc, sim)
+        result = sim.run(tqc, shots=shots).result()
+        counts = result.get_counts()
+
+    # Get bin index, by number of right turns (1)
+    bin_counts = {0: 0, 1: 0}
+    if mode == "full":
+        for bitstring, count in counts.items():
+            left = bitstring[0]   # Classical bit 0 → left peg (qubit 1)
+            right = bitstring[1]  # Classical bit 1 → right peg (qubit 3)
+            if right == '1':
+                bin_counts[1] += count
+            elif left == '1':
+                bin_counts[0] += count
+    else:
+        for bitstring, count in counts.items():
+            num_ones = bitstring.count('1')
+            bin_counts[num_ones] = bin_counts.get(num_ones, 0) + count
+
+    return bin_counts
+
+# Two layer box, (3 pegs, 4 bins)
+
+def galton_two_layer(shots=1000, mode="full", noise=False, op_level=0, zne=False):
+
+    if mode == "full":
+        qc = QuantumCircuit(6, 3)  # 6 qubits, 3 classical bits
+
+        # Qubit roles because apparently six numbers is too many for my brain:
+        # q0 - control qubit
+        # q1 - leftmost output peg
+        # q2 - intermediate peg
+        # q3 - input qubit (ball starts here)
+        # q4 - right intermediate peg
+        # q5 - rightmost output peg
+
+        # Step 1: Initialize input ball in q3 (|000100⟩)
+        qc.x(3)  # q3 = 1
+
+        # First peg
+        qc.h(0)                   # Superpose control qubit
+        qc.cswap(0, 2, 3)         # Conditional swap: input to left
+        qc.cx(3, 0)               # Update control if ball moved
+        qc.cswap(0, 3, 4)         # Conditional swap: input to right
+
+        # Reset control and prepare for second layer
+        qc.reset(0)
+        qc.h(0)
+
+        # Second layer — peg 1 (left path)
+        qc.cswap(0, 1, 2)         # Conditional swap: ball left
+        qc.cx(2, 0)               # Update control
+
+        # Second layer — peg 2 (right path)
+        qc.cswap(0, 2, 3)         # Conditional swap: center to right
+        qc.cx(3, 0)               # Update control
+        qc.cswap(0, 3, 4)         # Continue to far-right
+        qc.cx(4, 0)               # Update control
+        qc.cswap(0, 4, 5)         # Final rightmost fall
+
+        # Measure pegs: left = q1, middle = q3, right = q5
+        qc.measure(1, 0)
+        qc.measure(3, 1)
+        qc.measure(5, 2)
+
+    else:
+        qc = QuantumCircuit(2, 2)
+        qc.h(0)
+        qc.h(1)
+        qc.measure([0, 1], [0, 1]) # measure both qubits for right turn count
+
+    # Simulate
+    if noise:
+        backend = GenericBackendV2(num_qubits=6)
+        if zne:
+            # Apply ZNE
+            counts = zne_galton_counts(qc, n_bins=3, backend=backend, shots=shots)
+            return counts
+        else:
+            tqc = transpile(qc, backend, optimization_level=op_level)
+            job = backend.run(tqc)
+            result = job.result()
+    else:
+        sim = AerSimulator()
+        tqc = transpile(qc, sim)
+        result = sim.run(tqc, shots=shots).result()
+
+    counts = result.get_counts()
+
+    # Post-process: bin based on measurement result
+    bin_counts = {0: 0, 1: 0, 2: 0}
+    if mode == "full":
+        for bitstring, count in counts.items():
+            # bitstring order: c2 c1 c0 → [right, middle, left]
+            left = bitstring[0]
+            middle = bitstring[1]
+            right = bitstring[2]
+
+            if right == '1':
+                bin_counts[2] += count
+            elif middle == '1':
+                bin_counts[1] += count
+            elif left == '1':
+                bin_counts[0] += count
+    else:
+        for bitstring, count in counts.items():
+            num_ones = bitstring.count('1')
+            bin_counts[num_ones] = bin_counts.get(num_ones, 0) + count
+
+    return bin_counts
+
+
+# N-Layer Galton Board based on above format
+
+def galton_n_layer(n, shots=1000, mode="full", noise=False, op_level=0, zne=False, draw=False):
+
+    if mode == "full":
+        total_qubits = 2 * n + 2  # control + 2n + 1 pegs
+        qc = QuantumCircuit(total_qubits, n + 1)
+
+        control = 0
+
+        # Start ball in the middle peg
+        centre = n + 1
+        qc.x(centre)
+
+        # For each layer, peg is at index i (excluding control qubit)
+        for i in range(n):
+
+            # Reset control for next layer
+            qc.reset(control)
+
+            # Apply Hadamard to control
+            qc.h(control)
+
+            # Every peg per layer, working right to left
+            for j in range(i + 1):
+                middle = centre - i + (2 * j) # Gets centre qubit relative to board position
+                left = middle + 1
+                right = middle - 1 
+
+                # Controlled-SWAP: ball goes right
+                qc.cswap(control, middle, right)
+
+                # CNOT to entangle (centre → control)
+                qc.cx(middle, control)
+
+                # Controlled-SWAP: ball goes left
+                qc.cswap(control, middle, left)
+
+                # Inter-peg logic (optional)
+                if j < i:
+                    qc.cx(middle + 1, control)
+
+        # Measure qubits corresponding to odds, these are the pegs/bins
+        for i in range(0, n + 1):
+            qc.measure(2 * i + 1, i)
+
+    else:
+        # Fast version
+        qc = QuantumCircuit(n, n)
+        for i in range(n):
+            qc.h(i)
+        qc.measure(range(n), range(n))
+
+    # Simulate
+    if noise:
+        backend = GenericBackendV2(num_qubits=2*n+2)
+        if zne:
+            # Apply ZNE
+            counts = zne_galton_counts(qc, n_bins=n, backend=backend, shots=shots)
+            return counts
+        else:
+            tqc = transpile(qc, backend, optimization_level=op_level)
+            job = backend.run(tqc)
+            result = job.result()
+    else:
+        sim = AerSimulator()
+        tqc = transpile(qc, sim)
+        result = sim.run(tqc, shots=shots).result()
+        
+    counts = result.get_counts()
+
+    # Bin counts
+    bin_counts = {i: 0 for i in range(n + 1)}
+    if mode == "full":
+        for bitstring, count in counts.items():
+            for i, bit in enumerate(reversed(bitstring)):
+                if bit == '1':
+                    bin_counts[i] += count
+                    break
+    else:
+        for bitstring, count in counts.items():
+            num_ones = bitstring.count('1')
+            bin_counts[num_ones] += count
+
+    if draw:  # Draw the circuit if requested
+        display(qc.draw(output='mpl'))
+
+    return bin_counts

@@ -1,41 +1,12 @@
-# Ramsey interferometer here
+from qiskit import QuantumCircuit
+from .common import run_interferometer
 
-import numpy as np
-from qiskit import QuantumCircuit, transpile
-from qiskit_aer import AerSimulator
+def ramsey_builder(phi):
+    qc = QuantumCircuit(1, 1)
+    qc.h(0)       # π/2 pulse
+    qc.rz(phi, 0) # free evolution
+    qc.h(0)       # π/2 pulse
+    return qc
 
-# wait ffs all these are the same, i just need to get the fringes
-def ramsey_circuit(intervals=10, shots=1000):
-    phases = np.linspace(0, 2*np.pi, intervals)
-    probs = []
-
-    for phi in phases:
-
-        qc = QuantumCircuit(1, 1)
-
-        # Input: |1> (photon in mode 0)
-        qc.x(0)
-
-        # First beam splitter
-        qc.h(0)
-
-        # Phase shift
-        qc.rz(phi, 0)
-
-        # Second beam splitter
-        qc.h(0)
-
-        # Measurement
-        qc.measure(0, 0)
-
-        # Simulate
-        sim = AerSimulator()
-        tqc = transpile(qc, sim)
-        result = sim.run(tqc, shots=shots).result()
-        counts = result.get_counts()
-
-        p0 = counts.get('0', 0) / shots
-        p1 = counts.get('1', 0) / shots
-        probs.append([p0, p1])
-
-    return phases, probs
+def ramsey_circuit(intervals=10, shots=1000, plot=False):
+    return run_interferometer(ramsey_builder, intervals, shots, plot, "Ramsey")

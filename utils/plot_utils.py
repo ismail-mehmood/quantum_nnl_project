@@ -61,7 +61,7 @@ def plot_bins(bin_counts, n, shots=None, overlay=None, title="Galton Box", scale
     plt.tight_layout()
     plt.show()
 
-def plot_mzi_fringe(phases, results, labels=None, title="Mach–Zehnder Interference"):
+def plot_fringe(phases, results, labels=None, title="Mach–Zehnder Interference"):
     """
     Plot Mach–Zehnder interferometer output probabilities vs phase.
 

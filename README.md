@@ -1,7 +1,7 @@
 # Quantum Galton Board Project, with Qubit Stabilisation Extension
 Submission for the 2025 WISER Quantum Walks and Monte Carlo project. Created by Ismail Mehmood and Hayden Dyke.
 
-(Please note that the structure of the project has changes slightly, view this an an approximate guide only, use extension.pdf and extension.ipynb to navigate the interferometer project)
+(Please note that the structure of the project has changed slightly, view this an an approximate guide only, use extension.pdf and extension.ipynb to navigate the interferometer project.)
 
 This project implements a quantum simulation of a Galton Box (Plinko board), inspired by the Monte Carlo method. It is part of the Womanium & WISER 2025 Quantum Program.
 

@@ -133,7 +133,7 @@ The above protocol effectively reduces the decoherence of the control qubit by c
 Demonstrations with fewer shots should indicate that lower sampling rates are sufficient to obtain meaningful stabilization, which is crucial for near-term quantum devices with limited measurement budgets.
 
 = Conclusion
-We have presented a framework combining classical simulation and quantum circuit implementation of interferometers to benchmark and stabilize qubit coherence. By leveraging interferometric designs such as the Mach-Zehnder, Michelson, and Ramsey interferometers, we bridge traditional optics and quantum information processing techniques in order to improve our Galton Board design.
+We have presented a framework building on classical simulation and quantum circuit implementation of interferometers to benchmark and stabilize qubit coherence. By leveraging interferometric designs such as the Mach-Zehnder, Michelson, and Ramsey interferometers, we bridge traditional optics and quantum information processing techniques in order to improve our Galton Board design.
 
 Our work demonstrates that quantum circuits implementing stabilized interferometric protocols can serve as powerful benchmarks for quantum devices, particularly in the presence of noise and decoherence. The stabilization techniques applied to the quantum Galton board highlight the potential for enhanced control and error mitigation, paving the way for more robust quantum simulations.
 

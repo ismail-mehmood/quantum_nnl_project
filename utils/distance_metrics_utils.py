@@ -2,7 +2,7 @@ import numpy as np
 from scipy.stats import norm, chisquare, ttest_1samp, chi2, shapiro
 import math
 
-def distribution_distance(result, target_distribution="hadamard_walk", metric="tvd", **target_distribution_params):
+def distribution_distance(result, target_distribution="hadamard_walk", metric="tvd", input_type="counts", **target_distribution_params):
     """
     Calculates the distance between an observed distribution of Quantum Galton Board results and a target distribution.
 
@@ -29,8 +29,12 @@ def distribution_distance(result, target_distribution="hadamard_walk", metric="t
 
 
     #### STEP 1: Calculate Observed Probabilities ####
-    observed_probs = {outcome: count / sum(result.values()) for outcome, count in result.items()} # get observed probability of each outcome
-
+    if input_type == "counts":
+        observed_probs = {outcome: count / sum(result.values()) for outcome, count in result.items()} # get observed probability of each outcome
+    elif input_type == "probs":
+        observed_probs = result
+    else:
+        raise Exception("input_type must be 'counts' or 'probs'")
 
     #### STEP 2: Calculate Target Distribution Probabilities ####
     num_bins = len(result)  # number of outcomes
@@ -38,7 +42,8 @@ def distribution_distance(result, target_distribution="hadamard_walk", metric="t
     target_probs = {}
 
     # This ensures sinusoidal/cosine distributions know the x-values
-    x_values = target_distribution_params.get("x_values", np.arange(num_bins))
+    x_values = np.array(target_distribution_params.get("x_values", np.arange(num_bins)), dtype=float)
+
 
     # Hadamard Walk (i.e. Binomial with p = 0.5)
     if target_distribution == "hadamard_walk":
@@ -94,8 +99,8 @@ def distribution_distance(result, target_distribution="hadamard_walk", metric="t
 
     # Cosine Squared (MZI intensity profile)
     elif target_distribution == "cosine_squared":
-        freq = target_distribution_params.get("freq", 1.0)
-        phase_shift = target_distribution_params.get("phase_shift", 0.0)
+        freq = target_distribution_params.get("freq", 0.5)
+        phase_shift = target_distribution_params.get("phase_shift", np.pi/2)
         y_vals = np.cos(freq * x_values + phase_shift) ** 2
         y_vals /= np.sum(y_vals)
         target_probs = {outcome: y_vals[i] for i, outcome in enumerate(range(num_bins))}

@@ -25,48 +25,41 @@ def target_laplace_distribution(n_bins, decay_factor=1.0):
     probs /= np.sum(probs)  # Normalise
     return probs
 
-# Least squares regression with interrupts for my sanity
 def loss_function_layerwise(params, n, shots, target_probs, target, plot=False, start_time=None, max_time=None, best_tracker=None):
-    # Time check for forced termination, minimize runs its own internal iterations
+    # Time check for forced termination
     if start_time is not None and max_time is not None:
         if time.time() - start_time > max_time:
             print("\nTime limit reached. Forcing optimization to stop.")
-            raise TimeoutError  # Interrupt minimize()
+            raise TimeoutError
 
-    counts = biased_galton_n_layer(n, shots=shots, thetas=params, mode="fast")
+    thetas = params
 
-    sim_probs = np.array([counts[i] for i in range(n + 1)]) / shots
+    counts = biased_galton_n_layer(n, shots=shots, thetas=thetas, mode="full")
+    sim_probs = np.array([counts.get(i, 0) for i in range(n + 1)]) / shots
 
-    # We use KL divergence instead of squared error for exponential because of the
-    # tail shape of the exponential distribution
-
-    if target == "exponential":
-        loss = np.sum(target_probs * np.log((target_probs + 1e-8) / (sim_probs + 1e-8)))
-    else:
-        loss = np.sum((sim_probs - target_probs) ** 2)
+    loss = np.sqrt(0.5 * np.sum((np.sqrt(target_probs) - np.sqrt(sim_probs))**2)) # hellinger distance
 
     # Update result tracker
     if best_tracker is not None:
         if loss < best_tracker["loss"]:
             best_tracker["loss"] = loss
-            best_tracker["params"] = params.copy()
+            best_tracker["params"] = thetas.copy()
 
     # Live plotting during optimization
     if plot and (best_tracker is None or loss < best_tracker["loss"] * 1.02):
         plt.clf()
         bins = np.arange(n + 1)
         plt.bar(bins, sim_probs, alpha=0.6, label="Simulated")
-        plt.plot(bins, target_probs, "ro--", label="Target Distribution")
+        plt.plot(bins, target_probs, "ro--", label=f"Target {target.capitalize()}")
         plt.title(f"Loss: {loss:.4f}")
         plt.xlabel("Bins")
         plt.ylabel("Probability")
         plt.legend()
-        plt.pause(0.3)
+        plt.pause(0.1)
 
     return loss
 
-# Optimise
-def optimise_layerwise(n=5, shots=2000, target="laplace", scale=1.5, decay=1.0, max_time=10):
+def optimise_layerwise(n=5, shots=2000, target="exponential", scale=0.5, decay=1.0, max_time=120, multi_start=3):
     # Select target distribution
     if target == "exponential":
         target_probs = target_exponential(n, scale)
@@ -77,83 +70,64 @@ def optimise_layerwise(n=5, shots=2000, target="laplace", scale=1.5, decay=1.0, 
 
     plt.ion()
     start_time = time.time()
+    best_tracker = {
+        "loss": np.inf,
+        "params": None
+    }
 
-    if target == "exponential":
-        # -------- EXPONENTIAL OPTIMIZATION --------
-        best_tracker = {
-            "loss": np.inf,
-            "params": None,      # best thetas
-            "raw_params": None   # best [initial_theta, decay]
-        }
+    def loss_func(params):
+        return loss_function_layerwise(
+            params, n, shots, target_probs, target,
+            plot=True, start_time=start_time, max_time=max_time, best_tracker=best_tracker
+        )
 
-        def exp_loss(params):
-            initial_theta, decay_factor = params
-            thetas = [initial_theta * np.exp(-i / decay_factor) for i in range(n)]
-            loss = loss_function_layerwise(
-                thetas, n, shots, target_probs, target,
-                plot=True, start_time=start_time, max_time=max_time, best_tracker=None
-            )
-            # Track best result
-            if loss < best_tracker["loss"]:
-                best_tracker["loss"] = loss
-                best_tracker["params"] = thetas
-                best_tracker["raw_params"] = params.copy()
-            return loss
+    # Optimize all thetas directly
+    num_thetas = n * (n + 1) // 2
+    bounds = [(0.01, np.pi)] * num_thetas  # Safe range for thetas
 
-        # Initial guess and bounds
-        x0 = [np.pi/5, decay]  # e.g., ~36° starting angle, user decay guess
-        bounds = [(np.pi/8, np.pi/3), (2.0, 6.0)]  # safe ranges
-
+    # Multi-start strategy: try multiple initial points
+    best_loss = np.inf
+    for _ in range(multi_start):
+        x0 = np.random.uniform(np.pi / 4, 3 * np.pi / 4, num_thetas)  # Random initial thetas
         try:
-            res = minimize(exp_loss, x0, method="L-BFGS-B", bounds=bounds, options={"maxiter": 500})
+            res = minimize(loss_func, x0, method="COBYLA", bounds=bounds, options={"maxiter": 500, "rhobeg": 0.5})
+            if res.fun < best_loss:
+                best_loss = res.fun
         except TimeoutError:
             print("\nOptimization stopped due to time limit.")
-            res = None
+            break
 
-        plt.ioff()
-        plt.show()
+    plt.ioff()
+    plt.show()
 
-        # Extract best tracked result
-        final_thetas = best_tracker["params"]
-        final_loss = best_tracker["loss"]
-        best_raw = best_tracker["raw_params"]
+    # Extract best tracked result
+    final_thetas = best_tracker["params"]
+    final_loss = best_tracker["loss"]
 
-        print("\nOptimizer exit (last step):", res.x if res else "N/A")
-        print("Best tracked [initial, decay]:", best_raw)
-        print("Best Optimized thetas:", final_thetas)
-        print("Best Loss:", final_loss)
-        return final_thetas, final_loss, best_raw
+    print("\nOptimizer exit (best loss):", best_loss)
+    print("Best Optimized thetas:", final_thetas)
+    print("Best Loss:", final_loss)
 
-    else:
-        # -------- LAPLACE OPTIMIZATION (unchanged) --------
-        x0 = np.linspace(np.pi/1.5, np.pi/6, n)
-        bounds = [(0.01, np.pi)] * n
-        best_tracker = {"loss": np.inf, "params": x0.copy()}
+    # Final plot
+    final_counts = biased_galton_n_layer(n, shots=shots, thetas=final_thetas, mode="full")
+    sim_probs = np.array([final_counts.get(i, 0) for i in range(n + 1)]) / shots
+    plt.figure()
+    bins = np.arange(n + 1)
+    plt.bar(bins, sim_probs, alpha=0.6, label="Simulated")
+    plt.plot(bins, target_probs, "ro--", label=f"Target {target.capitalize()} (Param={scale if target == 'exponential' else decay})")
+    plt.title(f"Final Fit, Loss: {final_loss:.4f}")
+    plt.xlabel("Bins")
+    plt.ylabel("Probability")
+    plt.legend()
+    plt.show()
 
-        try:
-            res = minimize(loss_function_layerwise, x0,
-                           args=(n, shots, target_probs, target, True, start_time, max_time, best_tracker),
-                           method='L-BFGS-B', bounds=bounds,
-                           options={'maxiter': 500})
-        except TimeoutError:
-            print("\nOptimization stopped due to time limit.")
-            res = None
-
-        plt.ioff()
-        plt.show()
-
-        final_thetas = best_tracker["params"]
-        final_loss = best_tracker["loss"]
-
-        print("\nBest Optimized thetas:", final_thetas)
-        print("Best Loss:", final_loss)
-        return final_thetas, final_loss
+    return final_thetas, final_loss
 
 
 def biased_galton_n_layer(n, shots=1000, mode="full", thetas=None, noise=False):
 
     if thetas is None:
-        thetas = [np.pi/4] * n
+        thetas = [np.pi/2] * (n * (n+1) // 2)
 
     if mode == "full":
         total_qubits = 2 * n + 2  # control + 2n + 1 pegs
@@ -165,17 +139,21 @@ def biased_galton_n_layer(n, shots=1000, mode="full", thetas=None, noise=False):
         centre = n + 1
         qc.x(centre)
 
+        # theta counter
+        counter = 0
+
         # For each layer, peg is at index i (excluding control qubit)
         for i in range(n):
-
-            # Reset control for next layer
-            qc.reset(control)
-
-            # Apply biased rotation to control
-            qc.ry(thetas[i], control)
-
             # Every peg per layer, working right to left
             for j in range(i + 1):
+
+                # Reset control for each peg
+                qc.reset(control)
+
+                # Apply biased rotation to control
+                qc.ry(thetas[counter], control)
+                counter += 1
+
                 middle = centre - i + (2 * j) # Gets centre qubit relative to board position
                 left = middle + 1
                 right = middle - 1 
@@ -189,9 +167,13 @@ def biased_galton_n_layer(n, shots=1000, mode="full", thetas=None, noise=False):
                 # Controlled-SWAP: ball goes left
                 qc.cswap(control, middle, left)
 
-                # Inter-peg logic (optional)
-                if j < i:
-                    qc.cx(middle + 1, control)
+                # for all except first peg, corrective CNOT
+                if j > 0:
+                    qc.cx(middle+1, control)
+            
+            # resetting control for next layer:
+            if i < n-1:
+                qc.reset(control)
 
         # Measure qubits corresponding to odds, these are the pegs/bins
         for i in range(0, n + 1):
@@ -208,7 +190,7 @@ def biased_galton_n_layer(n, shots=1000, mode="full", thetas=None, noise=False):
     if noise:
         backend = GenericBackendV2(num_qubits=2*n+2)
         tqc = transpile(qc, backend)
-        job = backend.run(tqc)
+        job = backend.run(tqc, shots=shots)
         result = job.result()
     else:
         sim = AerSimulator()

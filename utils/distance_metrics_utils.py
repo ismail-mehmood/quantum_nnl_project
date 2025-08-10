@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.stats import norm, chisquare, ttest_1samp, chi2, shapiro
 import math
+from src.quantum_walk import hadamard_walk_probs
 
 def distribution_distance(result, target_distribution="hadamard_walk", metric="tvd", input_type="counts", **target_distribution_params):
     """
@@ -20,8 +21,9 @@ def distribution_distance(result, target_distribution="hadamard_walk", metric="t
         **target_distribution_params: Additional parameters for the target distribution, namely:
             "p" for Gaussian and Binomial (n is inferred)
             "lamda" for Exponential (dw spelt wrong as is keyword I'm not that dumb)
-            none for Hadamard Quantum Walk (this is the default, or binomial with p=0.5) and Chi-squared
-            "b" and "mu" for Laplace (note b = scale = 1/lambda).
+            none for Chi-squared
+            "b" and "mu" for Laplace (note b = scale = 1/lambda)
+            "n_dec", or number of decisions for Hadamard Quantum Walk
 
     Returns:
         float: The calculated distance between the observed and target distributions.
@@ -45,11 +47,12 @@ def distribution_distance(result, target_distribution="hadamard_walk", metric="t
     x_values = np.array(target_distribution_params.get("x_values", np.arange(num_bins)), dtype=float)
 
 
-    # Hadamard Walk (i.e. Binomial with p = 0.5)
-    if target_distribution == "hadamard_walk":
-        p = 0.5
+    # Hadamard Walk 
+    if target_distribution == "hadamard_walk": 
+        n_dec = target_distribution_params["n_dec"]
+        probs = hadamard_walk_probs(n_dec) # use fn defined in quantum_walk.py
         for outcome in range(num_bins):
-            target_probs[outcome] = math.comb(num_layers, outcome) * (p ** outcome) * ((1 - p) ** (num_layers - outcome))
+            target_probs[outcome] = probs[outcome]
 
     # Gaussian (Normal) Distribution
     elif target_distribution == "gaussian":
@@ -121,6 +124,7 @@ def distribution_distance(result, target_distribution="hadamard_walk", metric="t
     total_pdf = sum(target_probs.values()) # get sum of pdf values
     for outcome in range(num_bins):
         target_probs[outcome] /= total_pdf # normalise so probs sum to 1 for comparability
+
 
     #### STEP 3: Compute Distance Metric ####
 
@@ -197,7 +201,8 @@ def significance_test(distances_list, test_type="t", significance_level=0.05, **
     Uses scipy.stats.ttest_1samp, which takes a list of observations and the expected mean under H_0 (set to threshold here), 
     with N-1 degrees of freedom (handled by scipy), to estimate the p-value, and compares to the chosen significance level.
 
-    Can also use chi-squared statistic in a chi-squared test.
+    Can also use chi-squared statistic in a chi-squared test. Note that the combined chi-squared test is extremely harsh, and even the perfect simulator with shots
+    will almost always fail it!
 
     Args:
         distances_list (list): A list of N distance metrics as calculated by distribution_distance()

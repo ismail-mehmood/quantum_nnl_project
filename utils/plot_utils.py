@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import binom, norm, expon, laplace
+from src.quantum_walk import hadamard_walk_probs
 
 def plot_bins(bin_counts, n, shots=None, overlay=None, title="Galton Box", scale=0):
 
@@ -40,12 +41,25 @@ def plot_bins(bin_counts, n, shots=None, overlay=None, title="Galton Box", scale
 
             # Double sided Exponential Probability Density Function
             # Discrete Laplace (two-sided exponential centered at n/2)
-            probs = np.exp(-np.abs(bins - n/2) / scale)
+            probs = np.exp(-np.abs(bins - n//2) / scale)
             probs /= np.sum(probs)  # normalize
             expected = probs * shots
 
             # Plot
             plt.plot(bins, expected, "ro--", label="Laplacian Approx.")
+
+        elif overlay.lower() == "hadamard_walk":
+
+            # use predefined fn to get probs
+            if n % 2 == 0:
+                probs = hadamard_walk_probs(n/2)
+            else:
+                raise ValueError("In H walk case, number of layers must be even.")
+            
+            expected = probs * shots
+
+            # Plot
+            plt.plot(bins, expected, "ro--", label="Hadamard Walk Approx.")
 
         else:
             raise ValueError("Unsupported overlay option: choose 'binomial' or 'gaussian'")

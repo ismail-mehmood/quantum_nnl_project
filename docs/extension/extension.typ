@@ -53,7 +53,7 @@ We use a matrix representation of the beam splitter:
 
 $ 1/sqrt(2) mat(1, i; i, 1) $
 
-To encode this as a quantum circuit REF HERE, we use Hadamard gates to represent
+To encode this as a quantum circuit @mzi_form, we use Hadamard gates to represent
 the 50/50 beam splitters, a single qubit as the initial single photon input, and
 a unitary operation U(phi) to represent some phase shift.
 
@@ -75,58 +75,65 @@ Benchmarking using Ramsey interferometry involves measuring the decay of coheren
 
 = Beating Ramsey limits with deterministic qubit control
 
-- this top bit is from existing paper, reference and then replace when sims are done
-SNR per shot (Rv): Compare phase contrast (vary amplitude) between protocols.
+From @ramsey_limit, we obtain a method for continuous drive qubit stabilisation. 
 
-SNR per √time (Rs): Compare sensitivity improvement when including longer stabilized evolution windows.
+$ H(t)= Δ/2 ​σ _ z​+h _ y​(t) ​σ _ y / 2​ $
 
-Breakdown Time (tb): Quantify how long stabilization lasts before vx coherence collapses.
+In order to demonstrate this in our limited quantum circuits, we use Trotterization to apply this operator as a combination of unitary steps. First order Trotterization will suffice to give a sufficiently accurate unitary operator. For any $H = A + B$, we have that the time evolution operator:
 
-Deterministic control strategies based on feedback from Ramsey interferometry measurements can significantly improve the stability and coherence time of qubits. By implementing adaptive sequences and correction pulses conditioned on the observed phase drift, one can surpass traditional Ramsey limits. This approach enhances signal-to-noise ratios (SNR), especially when leveraging longer evolution windows stabilized by real-time correction.
+$ e^(-i H t) ≈ e^(-i A t) e^(-i B t) $
 
-HOPEFULLY - RUN THESE Simulations incorporating realistic noise models confirm that such stabilizing protocols remain robust, highlighting their potential for information processing applications.
+Simulations incorporating realistic noise models will help us to confirm that such stabilizing protocols remain robust, highlighting their potential for information processing applications.
+
+We carry this stabilisation out and analyse the results in the Jupyter Notebook extension.ipynb.
 
 = Application of stabilising operators to Galton Board
-Implementation Steps
+
+The correction pulse will be:
+
+$ R _ y ​(δ θ) "where" δ θ ∝ "arctan" (v _ x / (​v _ y​​)) $
+
+In order to mimic the time-slicing of the Hamiltonian evolution, we will apply the correction pulse in chunks of $R _ y ​((δ θ) / N)$.
+
+
+Implementation Steps:
 
     Start with the standard Galton circuit:
 
         Initialize ball qubit in center peg.
 
-        Use CSWAP-CNOT-CSWAP controlled by the control qubit.
+        Use CSWAP-CNOT-CSWAP structure controlled by the control qubit.
 
     Insert stabilization between layers:
 
         After each layer, extract or estimate Bloch components of the control qubit (or infer from expected evolution).
 
         Compute
-        $h y(t)∝γ 2⋅v x v z$
-        hy​(t)∝γ2​⋅vz​vx​​
 
-        (see equation in paper 2) [REFERENCE MISSING].
+        $ h _ y (t)∝γ _ 2 ⋅ v _ x / v _ z $
 
         Apply Trotterized slices as
-        Ustab≈∏kexp⁡(−iδt(Δ2σz+hy(tk)2σy))
-        Ustab​≈k∏​exp(−iδt(2Δ​σz​+2hy​(tk​)​σy​))
 
-        This unitary can be approximated by the sequence of small rotations:
-        Ustab≈∏kRz(Δ δt) Ry(hy(tk) δt)
-        Ustab​≈k∏​Rz​(Δδt)Ry​(hy​(tk​)δt)
+        $ U _ "stab" =  product_(k=0) "exp" ( ⁡− i δ t (Δ σ _ z / 2+h _ y (t _ k) σ _ y / 2)) $        
 
-    Repeat for each Galton layer:
+        This unitary can be approximated by the small rotations:
 
-        CSWAP scattering
+        $ R _ z​ (Δ δ t) + R _ y (h _ y δ t) $
 
-        Trotterized stabilization pulses
+    Repeat for each layer:
+
+        Execute Galton binning structure
+
+        Apply Trotterized stabilization pulses
 
         Move to the next layer.
 
-The above protocol effectively reduces the decoherence of the control qubit by counteracting phase noise through a series of carefully timed pulses. This approach harnesses the quantum Zeno effect by continuously steering the qubit state back to its intended trajectory, thereby extending the coherence time and improving the overall fidelity of the Galton board simulation.
+The above protocol effectively reduces the decoherence of the control qubit by counteracting phase noise through a series of carefully timed pulses. This approach harnesses the quantum Zeno effect by continuously steering the qubit state back to its intended trajectory and "resetting" its evolution, thereby extending the coherence time and improving the overall fidelity of the Galton board simulation.
 
-Demonstrations HOPEFULLY with fewer shots indicate that lower sampling rates are sufficient to obtain meaningful stabilization, which is crucial for near-term quantum devices with limited measurement budgets.
+Demonstrations with fewer shots should indicate that lower sampling rates are sufficient to obtain meaningful stabilization, which is crucial for near-term quantum devices with limited measurement budgets.
 
 = Conclusion
-We have presented a framework combining classical simulation and quantum circuit implementation of interferometers to benchmark and stabilize qubit coherence. By leveraging well-known interferometric designs such as the Mach-Zehnder, Michelson, and Ramsey interferometers, we bridge traditional optics and quantum information processing techniques.
+We have presented a framework combining classical simulation and quantum circuit implementation of interferometers to benchmark and stabilize qubit coherence. By leveraging interferometric designs such as the Mach-Zehnder, Michelson, and Ramsey interferometers, we bridge traditional optics and quantum information processing techniques in order to improve our Galton Board design.
 
 Our work demonstrates that quantum circuits implementing stabilized interferometric protocols can serve as powerful benchmarks for quantum devices, particularly in the presence of noise and decoherence. The stabilization techniques applied to the quantum Galton board highlight the potential for enhanced control and error mitigation, paving the way for more robust quantum simulations.
 

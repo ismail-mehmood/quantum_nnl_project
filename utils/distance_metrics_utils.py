@@ -3,7 +3,7 @@ from scipy.stats import norm, chisquare, ttest_1samp, chi2, shapiro
 import math
 from src.quantum_walk import hadamard_walk_probs
 
-def distribution_distance(result, target_distribution="gaussian", metric="tvd", **target_distribution_params):
+def distribution_distance(result, target_distribution="hadamard_walk", metric="tvd", input_type="counts", **target_distribution_params):
     """
     Calculates the distance between an observed distribution of Quantum Galton Board results and a target distribution.
 
@@ -31,15 +31,21 @@ def distribution_distance(result, target_distribution="gaussian", metric="tvd", 
 
 
     #### STEP 1: Calculate Observed Probabilities ####
-    observed_probs = {outcome: count / sum(result.values()) for outcome, count in result.items()} # get observed probability of each outcome
-
+    if input_type == "counts":
+        observed_probs = {outcome: count / sum(result.values()) for outcome, count in result.items()} # get observed probability of each outcome
+    elif input_type == "probs":
+        observed_probs = result
+    else:
+        raise Exception("input_type must be 'counts' or 'probs'")
 
     #### STEP 2: Calculate Target Distribution Probabilities ####
-    num_bins = len(result) # number of outcomes
-    num_layers = num_bins - 1 # bins = n+1, so layers is bins-1
+    num_bins = len(result)  # number of outcomes
+    num_layers = num_bins - 1  # bins = n+1, so layers is bins-1
     target_probs = {}
 
-    # calculating target distribution probabilities based on parameters (i.e. discretising):
+    # This ensures sinusoidal/cosine distributions know the x-values
+    x_values = np.array(target_distribution_params.get("x_values", np.arange(num_bins)), dtype=float)
+
 
     # Hadamard Walk 
     if target_distribution == "hadamard_walk": 
@@ -48,15 +54,15 @@ def distribution_distance(result, target_distribution="gaussian", metric="tvd", 
         for outcome in range(num_bins):
             target_probs[outcome] = probs[outcome]
 
-    # Gaussian (Normal) Distribution      
+    # Gaussian (Normal) Distribution
     elif target_distribution == "gaussian":
         p = target_distribution_params["p"]
         if p < 0 or p > 1:
             raise Exception("Invalid p. Must satisfy 0 <= p <= 1.")
-        mu = num_layers * p # Mean is np with p = 0.5
-        sigma = np.sqrt(num_layers * p * (1 - p)) # Std dev is root(np(1-p))
+        mu = num_layers * p
+        sigma = np.sqrt(num_layers * p * (1 - p))
         for outcome in range(num_bins):
-            target_probs[outcome] = norm.pdf(outcome, mu, sigma) # get pdf for each outcome (discretising)
+            target_probs[outcome] = norm.pdf(outcome, mu, sigma)
 
     # Exponential Distribution        
     elif target_distribution == "exponential":
@@ -64,7 +70,7 @@ def distribution_distance(result, target_distribution="gaussian", metric="tvd", 
         if lamda <= 0:
             raise Exception("Invalid lambda value. Must satisfy lamda > 0.")
         for outcome in range(num_bins):
-            target_probs[outcome] = lamda * np.exp(-1 * lamda * outcome) # pdf for exp dist. is lambda * exp(-lambda * x)
+            target_probs[outcome] = lamda * np.exp(-lamda * outcome)
 
     # Binomial Distribution        
     elif target_distribution == "binomial":
@@ -81,11 +87,38 @@ def distribution_distance(result, target_distribution="gaussian", metric="tvd", 
             raise Exception("Invalid b. Must satisfy b > 0.")
         mu = target_distribution_params["mu"]
         for outcome in range(num_bins):
-            target_probs[outcome] = (1/(2*b)) * np.exp(-1 * (abs(outcome - mu) / b)) 
+            target_probs[outcome] = (1/(2*b)) * np.exp(-abs(outcome - mu) / b)
+
+    # Sinusoidal (Ramsey-like fringes)
+    elif target_distribution == "sinusoidal":
+        A = target_distribution_params.get("A", 0.5)
+        offset = target_distribution_params.get("offset", 0.5)
+        freq = target_distribution_params.get("freq", 1.0)
+        phase_shift = target_distribution_params.get("phase_shift", 0.0)
+        y_vals = offset + A * np.sin(freq * x_values + phase_shift)
+        y_vals = np.clip(y_vals, 0, None)
+        y_vals /= np.sum(y_vals)
+        target_probs = {outcome: y_vals[i] for i, outcome in enumerate(range(num_bins))}
+
+    # Cosine Squared (MZI intensity profile)
+    elif target_distribution == "cosine_squared":
+        freq = target_distribution_params.get("freq", 0.5)
+        phase_shift = target_distribution_params.get("phase_shift", np.pi/2)
+        y_vals = np.cos(freq * x_values + phase_shift) ** 2
+        y_vals /= np.sum(y_vals)
+        target_probs = {outcome: y_vals[i] for i, outcome in enumerate(range(num_bins))}
+
+    # Double Frequency (Michelson-like)
+    elif target_distribution == "double_frequency":
+        freq = target_distribution_params.get("freq", 2.0)
+        phase_shift = target_distribution_params.get("phase_shift", 0.0)
+        y_vals = np.cos(freq * x_values + phase_shift) ** 2
+        y_vals /= np.sum(y_vals)
+        target_probs = {outcome: y_vals[i] for i, outcome in enumerate(range(num_bins))}
 
     else:
         raise Exception("Target Distribution provided is not recognised or supported. Check docstring.")
-    
+        
     # normalising target probabilities:
 
     total_pdf = sum(target_probs.values()) # get sum of pdf values

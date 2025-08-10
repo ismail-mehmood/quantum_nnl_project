@@ -1,7 +1,9 @@
 # quantum_nnl_project
-Submission for the 2025 WISER Quantum Walks and Monte Carlo project, sponsored by NNL. Created by Ismail Mehmood and Hayden Dyke.
+Submission for the 2025 WISER Quantum Walks and Monte Carlo project. Created by Ismail Mehmood and Hayden Dyke.
 
-This project implements a quantum simulation of a Galton Box (Plinko board), inspired by the Monte Carlo method. It is part of the Womanium & WISER 2025 Quantum Program in collaboration with NNL.
+(Please note that the structure of the project has changes slightly, view this an an approximate guide only, use extension.pdf and extension.ipynb to navigate the interferometer project)
+
+This project implements a quantum simulation of a Galton Box (Plinko board), inspired by the Monte Carlo method. It is part of the Womanium & WISER 2025 Quantum Program.
 
 The simulator demonstrates how quantum circuits can model classical stochastic systems and generate various distributions such as Gaussian, Exponential, and Hadamard-based quantum walks.
 

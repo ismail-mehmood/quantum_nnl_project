@@ -3,13 +3,14 @@ from .common import run_interferometer
 
 def michelson_builder(phi):
     qc = QuantumCircuit(1, 1)
-    qc.x(0)       # photon in mode 0
-    qc.h(0)       # first BS
-    qc.rz(phi, 0) # first pass
-    qc.h(0)       # reflection
-    qc.rz(phi, 0) # second pass
-    qc.h(0)       # recombine
+    # Start in |0> by default (why was this |1>?)
+    qc.h(0)          # first BS
+    qc.rz(2 * phi, 0)    # phase shift in one arm
+    # no gate here for reflection; mirrors add phase only, no mode mixing
+    qc.h(0)          # recombine BS
+    qc.measure(0, 0)
     return qc
+
 
 def michelson_circuit(intervals=10, shots=1000, plot=False):
     return run_interferometer(michelson_builder, intervals, shots, plot, "Michelson")
